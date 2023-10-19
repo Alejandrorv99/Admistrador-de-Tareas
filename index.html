@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Administrador de Tareas</title>
+    <style>
+        /* Estilos generales */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .task-columns {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+        }
+
+        .column {
+            flex: 1;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            margin: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #Pendientes {
+            background-color: #ff6961; /* Color Pendientes - Rosa */
+        }
+
+        #Empezada {
+            background-color: #36a2eb; /* Color Empezada - Verde */
+        }
+
+        #Completado {
+            background-color: #92fd70; /* Color Completado - Azul */
+        }
+
+        .column h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #fff;
+            text-align: center; /* Añadido para centrar el texto */
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            background-color: #fff;
+            padding: 10px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            cursor: grab;
+        }
+
+        /* Estilos para el efecto de arrastrar y soltar */
+        li:active {
+            opacity: 0.6;
+        }
+
+        /* Estilos para el menú emergente */
+        .move-task-button {
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-right: 5px;
+            position: relative;
+        }
+
+        .menu {
+            display: none;
+            position: absolute;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 5px;
+            z-index: 1;
+            min-width: 120px;
+            cursor: pointer;
+            background-color: white; /* Fondo blanco */
+        }
+
+        /* Estilos para cada opción en el menú emergente */
+        .menu a {
+            display: block;
+            text-decoration: none;
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 5px;
+            color: #333; /* Cambia el color de texto a gris oscuro */
+            cursor: pointer;
+        }
+
+        .menu a:hover {
+            background-color: #e6e6e6;
+        }
+
+        .menu #Pendientes-button, .menu #Pendientes-button-new { /* Cambio en la línea para agregar el nuevo botón */
+            background-color: #ff6961; /* Color Pendientes - Rosa */
+        }
+
+        .menu #Empezada-button {
+            background-color: #36a2eb; /* Color Empezada - Verde */
+        }
+
+        .menu #Completado-button {
+            background-color: #92fd70; /* Color Completado - Azul */
+        }
+
+        .move-task-button:hover .menu {
+            display: block;
+        }
+
+        #add-task-button {
+            display: block;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Estilos para el nuevo botón "Pendientes" */
+        #Pendientes-button {
+            background-color: #ff6961; /* Color Pendientes - Rosa */
+        }
+
+        /* Cambiar el orden de las columnas */
+        #Pendientes {
+            order: 1;
+        }
+
+        #Empezada {
+            order: 2;
+        }
+
+        #Completado {
+            order: 3;
+        }
+
+        /* Estilos para resaltar las columnas al pasar el mouse */
+        .column:hover {
+            background-color: #ffe08a;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Administrador de Tareas</h1>
+    </header>
+    <main>
+        <section class="task-form">
+            <input type="text" id="new-task-input" placeholder="Nueva tarea">
+            <button id="add-task-button">Agregar Tarea</button>
+        </section>
+        <section class="task-columns">
+            <div class="column" id="Pendientes">
+                <h2>Pendiente</h2>
+                <ul class="task-list">
+                    <!-- Aquí se mostrarán las tareas pendientes -->
+                </ul>
+            </div>
+            <div class="column" id="Empezada">
+                <h2>Empezada</h2>
+                <ul class="task-list">
+                    <!-- Aquí se mostrarán las tareas en proceso -->
+                </ul>
+            </div>            
+            <div class="column" id="Completado">
+                <h2>Completado</h2>
+                <ul class="task-list">
+                    <!-- Aquí se mostrarán las tareas completadas -->
+                </ul>
+            </div>
+        </section>
+
+        <!-- Gráfico de estadísticas -->
+        <canvas id="task-stats"></canvas>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const columns = document.querySelectorAll(".column");
+            const newTaskInput = document.getElementById("new-task-input");
+            const addTaskButton = document.getElementById("add-task-button");
+
+            columns.forEach(column => {
+                column.addEventListener("dragover", function(e) {
+                    e.preventDefault();
+                });
+
+                column.addEventListener("drop", function(e) {
+                    const draggingTask = e.dataTransfer.getData("text");
+                    if (draggingTask) {
+                        const targetList = column.querySelector("ul");
+                        targetList.appendChild(document.getElementById(draggingTask));
+                        updateTaskStats();
+                    }
+                });
+            });
+
+            addTaskButton.addEventListener("click", function() {
+                const text = newTaskInput.value.trim();
+                if (text) {
+                    createTask("Pendientes", text);
+                    newTaskInput.value = "";
+                    updateTaskStats();
+                }
+            });
+
+            function createTask(targetId, text) {
+                const targetList = document.getElementById(targetId);
+                if (targetList) {
+                    const taskItem = document.createElement("li");
+                    taskItem.textContent = text;
+                    taskItem.setAttribute("draggable", "true");
+
+                    const moveButton = document.createElement("button");
+                    moveButton.textContent = "Mover";
+                    moveButton.className = "move-task-button";
+
+                    taskItem.appendChild(moveButton);
+
+                    const menu = document.createElement("div");
+                    menu.className = "menu";
+                    const moveOptions = ["Pendientes", "Empezada", "Completado"];
+
+                    moveButton.addEventListener("click", function() {
+                        menu.style.display = menu.style.display === "block" ? "none" : "block";
+                    });
+
+                    moveOptions.forEach(option => {
+                        if (option !== targetId) {
+                            const link = document.createElement("a");
+                            link.href = "#";
+                            link.textContent = option;
+                            link.id = option + "-button"; // Asigna un ID al botón
+                            link.addEventListener("click", function(e) {
+                                e.preventDefault();
+                                moveTaskToColumn(targetList, taskItem, option);
+                                menu.style.display = "none";
+                            });
+                            menu.appendChild(link);
+                        }
+                    });
+
+                    // Agregar el nuevo botón "Pendientes" al principio
+                    const newPendientesButton = document.createElement("a");
+                    newPendientesButton.href = "#";
+                    newPendientesButton.textContent = "Pendientes";
+                    newPendientesButton.id = "Pendientes-button-new"; // Asigna un ID al botón
+                    newPendientesButton.addEventListener("click", function(e) {
+                        e.preventDefault();
+                        moveTaskToColumn(targetList, taskItem, "Pendientes");
+                        menu.style.display = "none";
+                    });
+                    menu.insertBefore(newPendientesButton, menu.firstChild);
+
+                    moveButton.appendChild(menu);
+
+                    targetList.appendChild(taskItem);
+                } else {
+                    console.error(`Element with id '${targetId}' not found.`);
+                }
+            }
+
+            function updateTaskStats() {
+                const pendientesCount = document.querySelectorAll("#Pendientes li").length;
+                const empezadaCount = document.querySelectorAll("#Empezada li").length;
+                const completadoCount = document.querySelectorAll("#Completado li").length;
+
+                const canvas = document.getElementById("task-stats");
+
+                if (canvas.chart) {
+                    canvas.chart.destroy();
+                }
+
+                const ctx = canvas.getContext("2d");
+                canvas.chart = new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels: ["Pendientes", "Empezada", "Completado"],
+                        datasets: [{
+                            label: "Tareas",
+                            data: [pendientesCount, empezadaCount, completadoCount],
+                            backgroundColor: [
+                                'rgba(255, 105, 97, 0.6)', // Color para Pendientes
+                                'rgba(54, 162, 235, 0.6)', // Color para Empezada
+                                'rgba(146, 253, 112, 0.6)'  // Color para Completado
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(75, 192, 192, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            function moveTaskToColumn(sourceList, task, targetId) {
+                const targetList = document.getElementById(targetId);
+                if (targetList) {
+                    targetList.appendChild(task);
+                    updateTaskStats();
+                } else {
+                    console.error(`Element with id '${targetId}' not found.`);
+                }
+            }
+
+            updateTaskStats();
+        });
+    </script>
+</body>
+</html>
